@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+env
+.git
+.dockerignore
+.vscode
+.env
+# Archivos de base de datos locales si los hubiera
+*.db
+*.sqlite3

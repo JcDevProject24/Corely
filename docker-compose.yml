@@ -1,0 +1,42 @@
+services:
+  # BASE DE DATOS
+  db:
+    image: mariadb:latest
+    container_name: corely_db
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: root_password
+      MARIADB_DATABASE: mi_tfg_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  # BACKEND
+  backend:
+    build: ./backend
+    container_name: corely_back
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      # Conexión a la DB usando el nombre del servicio 'db'
+      - DATABASE_URL=mysql+pymysql://root:root_password@db:3306/mi_tfg_db
+    depends_on:
+      - db
+
+  # FRONTEND
+  frontend:
+    build: ./frontend
+    container_name: corely_front
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  mariadb_data:

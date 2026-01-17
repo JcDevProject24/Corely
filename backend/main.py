@@ -8,7 +8,7 @@ import os
 # 1. URL de conexión para MariaDB/MySQL
 # Estructura: mysql+pymysql://usuario:password@host:puerto/nombre_db
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "mysql+pymysql://root:root_password@localhost:3306/mi_tfg_db"
+    "DATABASE_URL", "mysql+pymysql://root:root_password@db:3306/mi_tfg_db"
 )
 
 # El resto es prácticamente IGUAL que antes
@@ -29,9 +29,9 @@ db = SessionLocal()
 if db.query(Usuario).count() == 0:
     print("Base de datos vacía, insertando datos de prueba...")
     usuarios_iniciales = [
-        Usuario(nombre="Pepe de Prueba"),
-        Usuario(nombre="Juan de Prueba"),
-        Usuario(nombre="Marta de Prueba")
+        Usuario(nombre="Pepe"),
+        Usuario(nombre="Juan"),
+        Usuario(nombre="Marta")
     ]
     db.add_all(usuarios_iniciales)
     db.commit()
@@ -43,7 +43,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["*"],
+    allow_methods=["*"], ## EN PRODUCCIÓN (corely.es) CAMBIAR "*" POR LA URL DEL FRONTEND
     allow_headers=["*"],
 )
 
