@@ -1,0 +1,12 @@
+❯ docker compose restart backend        // temporal sino no funciona backend
+docker compose up -db -d                // levantar contenedor bbdd
+
+pip install -r backend - requiriments   // installar librerias backend
+
+npm run dev // fronend
+
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+cd .\frontend\ && npm run dev
+
+(cd frontend && npm run dev)
