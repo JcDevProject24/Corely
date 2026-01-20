@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background with rounded corners -->
+  <rect width="32" height="32" rx="8" fill="#2563eb" />
+
+  <!-- Hexágono exterior -->
+  <g transform="translate(16, 16)">
+    <path d="M 0,-9 L 7.8,-4.5 L 7.8,4.5 L 0,9 L -7.8,4.5 L -7.8,-4.5 Z"
+      fill="none"
+      stroke="white"
+      stroke-width="2" />
+
+    <!-- Hexágono interior -->
+    <path d="M 0,-6 L 5.2,-3 L 5.2,3 L 0,6 L -5.2,3 L -5.2,-3 Z"
+      fill="none"
+      stroke="white"
+      stroke-width="1.8" />
+
+    <!-- Cubo 3D central girado (forma de C) -->
+    <g transform="rotate(-60)">
+      <!-- Cara frontal -->
+      <path d="M 0,-2.5 L 3,0 L 3,5 L 0,2.5 Z"
+        fill="white"
+        opacity="0.9" />
+
+      <!-- Cara superior -->
+      <path d="M 0,-2.5 L -3,0 L 0,2.5 L 3,0 Z"
+        fill="white"
+        opacity="0.7" />
+
+      <!-- Cara lateral -->
+      <!-- <path d="M -3,0 L -3,5 L 0,1.5 L 0,-3 Z"
+        fill="white"
+        opacity="0.6" /> -->
+    </g>
+  </g>
+</svg>
