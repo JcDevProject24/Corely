@@ -1,11 +1,11 @@
 import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarApp } from "@/components/custom/SidebarApp";
-// import { userAuth } from "@/context/AuthContext";
+import { userAuth } from "@/context/AuthContext";
 
 export const DashboardLayout = () => {
 
-    // const { session } = userAuth();
+    const { user } = userAuth();
 
     return (
         <SidebarProvider>
@@ -30,7 +30,7 @@ export const DashboardLayout = () => {
 
                     {/* Main content */}
                     <main className="flex-1 p-6 overflow-auto">
-                        {/* <h2>Bienvenido {session?.user?.user_metadata.display_name}!</h2> */}
+                        <h2 className="text-2xl font-semibold mb-4">Bienvenido {user?.username}!</h2>
                         <Outlet />
                     </main>
                 </div>

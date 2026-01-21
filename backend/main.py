@@ -8,18 +8,17 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError
 import os
 
+# Importar configuración y modelos
+from config import settings
+from models.user import Base, User
+from auth.router import router as auth_router
+
 # 1. URL de conexión para MariaDB/MySQL
-# Estructura: mysql+pymysql://usuario:password@host:puerto/nombre_db
-DATABASE_URL = os.getenv(
-    # "DATABASE_URL", "mysql+pymysql://root:root_password@db:3306/mi_tfg_db",
-    "DATABASE_URL",
-    "mysql+pymysql://root:root_password@localhost:3306/mi_tfg_db",
-)
+DATABASE_URL = settings.DATABASE_URL
 
 # El resto es prácticamente IGUAL que antes
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 
 class Usuario(Base):
@@ -44,14 +43,17 @@ def wait_for_db():
 
 app = FastAPI()
 
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=[
-        "*"
-    ],  ## EN PRODUCCIÓN (corely.es) CAMBIAR "*" POR LA URL DEL FRONTEND
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],  ## EN PRODUCCIÓN (corely.es) CAMBIAR "*" POR LA URL DEL FRONTEND
     allow_headers=["*"],
 )
+
+# Incluir router de autenticación
+app.include_router(auth_router)
 
 
 def get_db():

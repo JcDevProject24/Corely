@@ -1,17 +1,5 @@
-// import { lazy } from "react";
-// import { FlowhubLayout } from "@/flowhub/layouts/FlowhubLayout";
-// import { CalendarPage } from "@/flowhub/pages/calendar/CalendarPage";
-// import { HabitsPage } from "@/flowhub/pages/habits/HabitsPage";
-// import { TaskPage } from "@/flowhub/pages/tasks/TaskPage";
-// import { AuthLayout } from "@/auth/layouts/AuthLayout";
-// import { LoginPage } from "@/auth/pages/LoginPage";
-// import { SignupPage } from "@/auth/pages/SignupPage";
-// import { HomePage } from "@/flowhub/pages/home/HomePage";
-// import { SettingsPage } from "@/flowhub/pages/settings/SettingsPage";
-// import { PrivateRoute } from "@/components/custom/PrivateRoute";
-// import { PublicRoute } from "@/components/custom/PublicRoute";
-// import { SearchPage } from "@/heroes/pages/search/SearchPage";
-// const SearchPage = lazy(() => import('@/heroes/pages/search/SearchPage'))
+import { PrivateRoute } from "@/components/custom/PrivateRoute";
+import { PublicRoute } from "@/components/custom/PublicRoute";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { DashboardLayout } from "@/dashboard/layouts/DashboardLayout";
@@ -34,9 +22,9 @@ export const AppRouter = createBrowserRouter([
     {
         path: "/",
         element: (
-            // <PrivateRoute>
-            <DashboardLayout />
-            // </PrivateRoute>
+            <PrivateRoute>
+                <DashboardLayout />
+            </PrivateRoute>
         ),
         children: [
             {
@@ -76,9 +64,9 @@ export const AppRouter = createBrowserRouter([
     {
         path: "/login",
         element: (
-            // <PublicRoute>
-            <AuthLayout />
-            // </PublicRoute>
+            <PublicRoute>
+                <AuthLayout />
+            </PublicRoute>
         ),
         children: [
             {
@@ -90,9 +78,9 @@ export const AppRouter = createBrowserRouter([
     {
         path: "/signup",
         element: (
-            // <PublicRoute>
-            <AuthLayout />
-            // </PublicRoute>
+            <PublicRoute>
+                <AuthLayout />
+            </PublicRoute>
         ),
         children: [
             {

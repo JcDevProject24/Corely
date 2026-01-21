@@ -2,10 +2,8 @@
 
 import type React from "react"
 import { useState } from "react"
-// import { Link, useNavigate } from "react-router"
-
-// import { userAuth } from "@/context/AuthContext"
-
+import { Link, useNavigate } from "react-router-dom"
+import { userAuth } from "@/context/AuthContext"
 import { validateForm } from "../utils/Signup"
 
 import { Button } from "@/components/ui/button"
@@ -29,10 +27,8 @@ export const SignupPage = () => {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
-
-    // const { signUpNewUser } = userAuth();
-    // const navigate = useNavigate();
-    // console.log(session)
+    const { signUpNewUser } = userAuth();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -41,12 +37,14 @@ export const SignupPage = () => {
 
         setIsLoading(true)
         try {
-            // const result = await signUpNewUser(email, password, fullName)
+            const result = await signUpNewUser(email, password, fullName)
 
-            // if (result.success) {
-            // navigate("/")
-            // }
-
+            if (result.success) {
+                navigate("/")
+            }
+            if (!result.success) {
+                setError(result.error?.message || "Error al registrar usuario. Inténtalo de nuevo.");
+            }
 
             // Reset form on success
             setFullName("")
@@ -172,9 +170,9 @@ export const SignupPage = () => {
                 <div className="mt-6 text-center">
                     <p className="text-gray-600 text-sm">
                         ¿Ya tienes cuenta?{" "}
-                        {/* <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                        <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium transition-colors">
                             Iniciar sesión
-                        </Link> */}
+                        </Link>
                     </p>
                 </div>
             </CardContent>

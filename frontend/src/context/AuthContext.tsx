@@ -1,112 +1,184 @@
-// import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-// // import type { Session } from "@supabase/supabase-js";
-// // import { supabase } from "@/supabase/SupabaseClient";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    type ReactNode,
+} from "react";
 
+// Configuración de la API
+const API_URL = "http://localhost:8000";
 
-// //  Tipo del contexto (puedes ampliarlo según tus necesidades)
-// type AuthContextType = {
-//     session: Session | null;
-//     loading: boolean;
-//     signUpNewUser: (email: string, password: string, name: string) => Promise<{ success: boolean; data?: any; error?: any }>;
-//     lognInUser: (email: string, password: string) => Promise<{ success: boolean; data?: any; error?: any }>;
-//     logOut: () => void;
-// };
-// //  Tipo de las props del provider
-// type AuthProviderProps = {
-//     children: ReactNode;
-// };
+// Tipo para el usuario
+type User = {
+    id: number;
+    email: string;
+    username: string;
+    created_at: string;
+};
 
-// //  Crear el contexto con tipo
-// const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Tipo del contexto
+type AuthContextType = {
+    user: User | null;
+    loading: boolean;
+    signUpNewUser: (
+        email: string,
+        password: string,
+        username: string
+    ) => Promise<{ success: boolean; data?: any; error?: any }>;
+    lognInUser: (
+        email: string,
+        password: string
+    ) => Promise<{ success: boolean; data?: any; error?: any }>;
+    logOut: () => void;
+};
 
+// Tipo de las props del provider
+type AuthProviderProps = {
+    children: ReactNode;
+};
 
+// Crear el contexto con tipo
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Componente provider
+export const AuthContextProvider = ({ children }: AuthProviderProps) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
+    // Función para verificar si hay un usuario autenticado
+    const checkAuth = async () => {
+        const token = localStorage.getItem("access_token");
 
-// //  Componente provider
-// export const AuthContextProvider = ({ children }: AuthProviderProps) => {
-//     const [session, setSession] = useState<Session | null>(null);
-//     const [loading, setLoading] = useState(true);
+        if (!token) {
+            setLoading(false);
+            return;
+        }
 
-//     //Sign Up
-//     const signUpNewUser = async (email: string, password: string, name: string) => {
-//         const { data, error } = await supabase.auth.signUp({
-//             email: email,
-//             password: password,
-//             options: {
-//                 data: {
-//                     display_name: name,
-//                 }
-//             }
-//         })
+        try {
+            const response = await fetch(`${API_URL}/auth/me`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
 
-//         if (error) {
-//             console.error("Error signing up:", error.message);
-//             return { success: false, error };
-//         }
-//         return { success: true, data };
-//     }
-//     //Log In
-//     const lognInUser = async (email: string, password: string) => {
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+            } else {
+                // Token inválido o expirado
+                localStorage.removeItem("access_token");
+                setUser(null);
+            }
+        } catch (error) {
+            console.error("Error checking auth:", error);
+            localStorage.removeItem("access_token");
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-//         try {
-//             const { data, error } = await supabase.auth.signInWithPassword({
-//                 email,
-//                 password
-//             })
+    // Sign Up
+    const signUpNewUser = async (
+        email: string,
+        password: string,
+        username: string
+    ) => {
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password, username }),
+            });
 
+            const data = await response.json();
 
-//             if (error) {
-//                 console.error("Error logging in:", error.message);
-//                 return { success: false, error };
-//             }
-//             console.log('login succes', data)
-//             return { success: true, data };
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: { message: data.detail || "Error al registrar usuario" },
+                };
+            }
 
-//         } catch (error) {
-//             console.error('Ocurrio un error: ', error)
-//             return { success: false, error };
-//         }
-//     }
+            // Después de registrar, hacer login automáticamente
+            return await lognInUser(email, password);
+        } catch (error) {
+            console.error("Error signing up:", error);
+            return {
+                success: false,
+                error: { message: "Error de conexión al servidor" },
+            };
+        }
+    };
 
-//     const logOut = async () => {
-//         const { error } = await supabase.auth.signOut();
-//         if (error) {
-//             console.error("Error signing out:", error.message);
-//         }
-//     }
+    // Log In
+    const lognInUser = async (email: string, password: string) => {
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password }),
+            });
 
+            const data = await response.json();
 
-//     useEffect(() => {
-//         // Obtener la sesión actual
-//         supabase.auth.getSession().then(({ data: { session } }) => {
-//             setSession(session);
-//             setLoading(false);
-//         });
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: { message: data.detail || "Error al iniciar sesión" },
+                };
+            }
 
-//         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-//             setSession(session);
-//             setLoading(false);
-//         });
+            // Guardar token en localStorage
+            localStorage.setItem("access_token", data.access_token);
 
-//         return () => listener.subscription.unsubscribe();
-//     }, []);
+            // Actualizar estado del usuario
+            setUser(data.user);
 
+            console.log("Login success", data);
+            return { success: true, data };
+        } catch (error) {
+            console.error("Error logging in:", error);
+            return {
+                success: false,
+                error: { message: "Error de conexión al servidor" },
+            };
+        }
+    };
 
+    // Log Out
+    const logOut = () => {
+        localStorage.removeItem("access_token");
+        setUser(null);
+        console.log("Logout exitoso");
+    };
 
-//     return (
-//         <AuthContext.Provider value={{ session, loading, signUpNewUser, lognInUser, logOut }}>
-//             {children}
-//         </AuthContext.Provider>
-//     );
-// };
+    // Verificar autenticación al montar el componente
+    useEffect(() => {
+        checkAuth();
+    }, []);
 
-// //  Hook personalizado para usar el contexto
-// export const userAuth = (): AuthContextType => {
-//     const context = useContext(AuthContext);
-//     if (!context) {
-//         throw new Error("useAuth must be used within an AuthContextProvider");
-//     }
-//     return context;
-// };
+    return (
+        <AuthContext.Provider
+            value={{ user, loading, signUpNewUser, lognInUser, logOut }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
+};
 
+// Hook personalizado para usar el contexto
+export const userAuth = (): AuthContextType => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error("useAuth must be used within an AuthContextProvider");
+    }
+    return context;
+};

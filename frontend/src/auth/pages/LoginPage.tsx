@@ -3,12 +3,12 @@
 import type React from "react"
 
 import { useState } from "react"
-// import { Link, useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { validateForm } from "../utils/Login"
-// import { userAuth } from "@/context/AuthContext"
+import { userAuth } from "@/context/AuthContext"
 
 export const LoginPage = () => {
     const [email, setEmail] = useState("")
@@ -17,36 +17,33 @@ export const LoginPage = () => {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
-
-    // const { lognInUser } = userAuth();
-    // console.log('1')
-    // const navigate = useNavigate();
+    const { lognInUser } = userAuth();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
-        // e.preventDefault()
+        e.preventDefault()
 
-        // if (!validateForm(email, password, setErrors)) return
+        if (!validateForm(email, password, setErrors)) return
 
-        // setIsLoading(true)
-        // try {
-        //     // const result = await lognInUser(email, password)
+        setIsLoading(true)
+        try {
+            const result = await lognInUser(email, password)
 
-        //     if (result.success) {
-        //         navigate("/")
-        //     }
-        //     if (!result.success) {
-        //         setError(result.error?.message || "Credenciales incorrectas. Inténtalo de nuevo.");
-        //     }
+            if (result.success) {
+                navigate("/")
+            }
+            if (!result.success) {
+                setError(result.error?.message || "Credenciales incorrectas. Inténtalo de nuevo.");
+            }
 
-
-        //     // Reset form on success
-        //     setEmail("")
-        //     setPassword("")
-        // } catch {
-        //     setError('Ocurrio un error')
-        // } finally {
-        //     setIsLoading(false)
-        // }
+            // Reset form on success
+            setEmail("")
+            setPassword("")
+        } catch {
+            setError('Ocurrio un error')
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -120,9 +117,9 @@ export const LoginPage = () => {
                 <div className="mt-6 text-center">
                     <p className="text-gray-600 text-sm">
                         ¿No tienes cuenta?{" "}
-                        {/* <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium transition-colors"> */}
-                        Crear cuenta
-                        {/* </Link> */}
+                        <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                            Crear cuenta
+                        </Link>
                     </p>
                 </div>
             </CardContent>

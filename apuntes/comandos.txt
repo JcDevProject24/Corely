@@ -10,3 +10,14 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 cd .\frontend\ && npm run dev
 
 (cd frontend && npm run dev)
+
+Opción 1: Con el entorno virtual ya creado (Windows PowerShell)
+
+  cd backend
+  .\venv\Scripts\Activate.ps1
+  uvicorn main:app --reload
+
+  Opción 2: Sin activar el entorno (directo)
+
+  cd backend
+  venv\Scripts\uvicorn.exe main:app --reload
