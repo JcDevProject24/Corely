@@ -1,7 +1,7 @@
 ❯ docker compose restart backend        // temporal sino no funciona backend
 docker compose up -db -d                // levantar contenedor bbdd
 
-pip install -r backend - requiriments   // installar librerias backend
+pip install -r requirements   // installar librerias backend
 
 npm run dev // fronend
 
