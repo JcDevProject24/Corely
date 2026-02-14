@@ -5,20 +5,45 @@ on:
     branches: [main]
 
 jobs:
-  version:
-    name: Calculate Version
+  analyze:
+    name: Analyze Commit
     runs-on: ubuntu-latest
     outputs:
-      new_version: ${{ steps.version.outputs.new_version }}
-      bump: ${{ steps.version.outputs.bump }}
+      action: ${{ steps.analyze.outputs.action }}
+      new_version: ${{ steps.analyze.outputs.new_version }}
+      backend_changed: ${{ steps.changes.outputs.backend }}
+      frontend_changed: ${{ steps.changes.outputs.frontend }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determine version bump from commit message
-        id: version
+      - name: Detect changed services
+        id: changes
+        run: |
+          # Compare against previous commit
+          BACKEND=$(git diff --name-only HEAD~1 HEAD -- backend/ | wc -l)
+          FRONTEND=$(git diff --name-only HEAD~1 HEAD -- frontend/ | wc -l)
+
+          if [ "$BACKEND" -gt 0 ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "Backend has changes"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "Backend has NO changes"
+          fi
+
+          if [ "$FRONTEND" -gt 0 ]; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "Frontend has changes"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            echo "Frontend has NO changes"
+          fi
+
+      - name: Determine action and version
+        id: analyze
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
@@ -34,43 +59,39 @@ jobs:
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
-          # Determine bump type from conventional commit prefix
-          if echo "$COMMIT_MSG" | grep -qiE '^feat(\(.+\))?!:|^BREAKING CHANGE:'; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            BUMP="major"
+          # feat/fix → only build (verify), upload → build + push
+          if echo "$COMMIT_MSG" | grep -qiE '^upload(\(.+\))?!:|^BREAKING CHANGE:'; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+            ACTION="push"
+          elif echo "$COMMIT_MSG" | grep -qiE '^upload(\(.+\))?:'; then
+            MINOR=$((MINOR + 1)); PATCH=0
+            ACTION="push"
           elif echo "$COMMIT_MSG" | grep -qiE '^feat(\(.+\))?:'; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-            BUMP="minor"
+            MINOR=$((MINOR + 1)); PATCH=0
+            ACTION="build"
           elif echo "$COMMIT_MSG" | grep -qiE '^fix(\(.+\))?:'; then
             PATCH=$((PATCH + 1))
-            BUMP="patch"
+            ACTION="build"
           else
-            echo "No feat/fix prefix found — skipping publish."
-            echo "bump=none" >> "$GITHUB_OUTPUT"
+            echo "No recognized prefix — skipping."
+            echo "action=skip" >> "$GITHUB_OUTPUT"
             echo "new_version=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          echo "New version: $NEW_VERSION ($BUMP)"
+          echo "Action: $ACTION | New version: $NEW_VERSION"
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
 
-  publish:
-    name: Build & Push Images
+  # ── Backend ──
+  backend:
+    name: Backend
     runs-on: ubuntu-latest
-    needs: version
-    if: needs.version.outputs.bump != 'none' && needs.version.outputs.new_version != ''
-    strategy:
-      matrix:
-        include:
-          - context: ./backend
-            tag_prefix: backend
-          - context: ./frontend
-            tag_prefix: frontend
+    needs: analyze
+    if: >-
+      needs.analyze.outputs.action == 'push' ||
+      (needs.analyze.outputs.action == 'build' && needs.analyze.outputs.backend_changed == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,42 +99,113 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── Jorge ──
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          load: true
+          tags: corely:backend-test
+
+      # Push only on "upload:" commits
       - name: Login to DockerHub (Jorge)
+        if: needs.analyze.outputs.action == 'push'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & Push (Jorge)
+      - name: Push backend (Jorge)
+        if: needs.analyze.outputs.action == 'push'
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: ./backend
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/corely:${{ matrix.tag_prefix }}-v${{ needs.version.outputs.new_version }}
-            ${{ secrets.DOCKER_USERNAME }}/corely:${{ matrix.tag_prefix }}-latest
+            ${{ secrets.DOCKER_USERNAME }}/corely:backend-v${{ needs.analyze.outputs.new_version }}
+            ${{ secrets.DOCKER_USERNAME }}/corely:backend-latest
 
-      # ── Sergio ──
       - name: Login to DockerHub (Sergio)
+        if: needs.analyze.outputs.action == 'push'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME_SERGIO }}
           password: ${{ secrets.DOCKER_PASSWORD_SERGIO }}
 
-      - name: Build & Push (Sergio)
+      - name: Push backend (Sergio)
+        if: needs.analyze.outputs.action == 'push'
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: ./backend
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:${{ matrix.tag_prefix }}-v${{ needs.version.outputs.new_version }}
-            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:${{ matrix.tag_prefix }}-latest
+            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:backend-v${{ needs.analyze.outputs.new_version }}
+            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:backend-latest
 
+  # ── Frontend ──
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: >-
+      needs.analyze.outputs.action == 'push' ||
+      (needs.analyze.outputs.action == 'build' && needs.analyze.outputs.frontend_changed == 'true')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          load: true
+          tags: corely:frontend-test
+
+      - name: Login to DockerHub (Jorge)
+        if: needs.analyze.outputs.action == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push frontend (Jorge)
+        if: needs.analyze.outputs.action == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/corely:frontend-v${{ needs.analyze.outputs.new_version }}
+            ${{ secrets.DOCKER_USERNAME }}/corely:frontend-latest
+
+      - name: Login to DockerHub (Sergio)
+        if: needs.analyze.outputs.action == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME_SERGIO }}
+          password: ${{ secrets.DOCKER_PASSWORD_SERGIO }}
+
+      - name: Push frontend (Sergio)
+        if: needs.analyze.outputs.action == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:frontend-v${{ needs.analyze.outputs.new_version }}
+            ${{ secrets.DOCKER_USERNAME_SERGIO }}/corely:frontend-latest
+
+  # ── Git Tag (only on upload) ──
   tag:
     name: Create Git Tag
     runs-on: ubuntu-latest
-    needs: [version, publish]
+    needs: [analyze, backend, frontend]
+    if: >-
+      always() &&
+      needs.analyze.outputs.action == 'push' &&
+      !contains(needs.*.result, 'failure')
     permissions:
       contents: write
     steps:
@@ -124,5 +216,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ needs.version.outputs.new_version }}"
-          git push origin "v${{ needs.version.outputs.new_version }}"
+          git tag "v${{ needs.analyze.outputs.new_version }}"
+          git push origin "v${{ needs.analyze.outputs.new_version }}"
