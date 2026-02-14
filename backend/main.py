@@ -11,7 +11,9 @@ import os
 # Importar configuración y modelos
 from config import settings
 from models.user import Base, User
+from models.social_account import SocialAccount
 from auth.router import router as auth_router
+from auth.oauth import oauth_router
 
 # 1. URL de conexión para MariaDB/MySQL
 DATABASE_URL = settings.DATABASE_URL
@@ -52,8 +54,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir router de autenticación
+# Incluir routers de autenticación
 app.include_router(auth_router)
+app.include_router(oauth_router)
 
 
 def get_db():

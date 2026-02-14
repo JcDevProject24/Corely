@@ -16,12 +16,27 @@ class UserLogin(BaseModel):
     password: str
 
 
+# Schema para respuesta de cuenta social
+class SocialAccountResponse(BaseModel):
+    id: int
+    provider: str
+    provider_email: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Schema para respuesta de usuario (sin password)
 class UserResponse(BaseModel):
     id: int
     email: str
     username: str
+    avatar_url: Optional[str] = None
+    is_email_verified: bool = False
+    has_password: bool = True
     created_at: datetime
+    social_accounts: list[SocialAccountResponse] = []
 
     class Config:
         from_attributes = True
@@ -38,3 +53,8 @@ class TokenResponse(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     email: Optional[str] = None
+
+
+# Schema para establecer password (usuarios OAuth)
+class SetPasswordRequest(BaseModel):
+    password: str

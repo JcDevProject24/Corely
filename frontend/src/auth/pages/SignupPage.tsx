@@ -9,6 +9,7 @@ import { validateForm } from "../utils/Signup"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { SocialLoginButtons } from "../components/SocialLoginButtons"
 
 
 
@@ -165,6 +166,11 @@ export const SignupPage = () => {
                         )}
                     </Button>
                 </form>
+
+                {/* Social Login Buttons */}
+                <div className="mt-6">
+                    <SocialLoginButtons mode="signup" />
+                </div>
 
                 {/* Switch Mode Link */}
                 <div className="mt-6 text-center">

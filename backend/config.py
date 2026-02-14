@@ -17,6 +17,17 @@ class Settings(BaseSettings):
         "mysql+pymysql://root:root_password@localhost:3306/mi_tfg_db",
     )
 
+    # URLs
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+    # OAuth Configuration
+    FACEBOOK_CLIENT_ID: str = os.getenv("FACEBOOK_CLIENT_ID", "")
+    FACEBOOK_CLIENT_SECRET: str = os.getenv("FACEBOOK_CLIENT_SECRET", "")
+    INSTAGRAM_CLIENT_ID: str = os.getenv("INSTAGRAM_CLIENT_ID", "")
+    INSTAGRAM_CLIENT_SECRET: str = os.getenv("INSTAGRAM_CLIENT_SECRET", "")
+    OAUTH_STATE_SECRET: str = os.getenv("OAUTH_STATE_SECRET", "oauth_state_secret_change_in_production")
+
     class Config:
         env_file = ".env"
 

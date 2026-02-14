@@ -8,3 +8,4 @@ python-multipart
 pydantic-settings
 bcrypt
 email-validator
+httpx>=0.25.0
