@@ -1,3 +1,7 @@
 node_modules
 .env
 .clauderules
+
+__pycache__
+__pycache__/
+*.pyc
