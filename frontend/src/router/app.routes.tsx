@@ -11,7 +11,6 @@ import { SettingsPage } from "@/dashboard/pages/settings/SettingsPage";
 import { AuthLayout } from "@/auth/layouts/AuthLayout";
 import { LoginPage } from "@/auth/pages/LoginPage";
 import { SignupPage } from "@/auth/pages/SignupPage";
-import { OAuthCallback } from "@/auth/components/OAuthCallback";
 import { FitnessPage } from "@/dashboard/pages/fitness/FitnessPage";
 import { FinancePage } from "@/dashboard/pages/finance/FinancePage";
 import { NewsPage } from "@/dashboard/pages/news/NewsPage";
@@ -89,10 +88,6 @@ export const AppRouter = createBrowserRouter([
                 element: <SignupPage />,
             },
         ]
-    },
-    {
-        path: "/auth/callback",
-        element: <OAuthCallback />,
     },
     {
         path: "*",

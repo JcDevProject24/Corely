@@ -13,7 +13,7 @@ from config import settings
 from models.user import Base, User
 from models.social_account import SocialAccount
 from auth.router import router as auth_router
-from auth.oauth import oauth_router
+from auth.oauth import router as oauth_router
 
 # 1. URL de conexión para MariaDB/MySQL
 DATABASE_URL = settings.DATABASE_URL

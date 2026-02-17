@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { validateForm } from "../utils/Login"
 import { userAuth } from "@/context/AuthContext"
-import { SocialLoginButtons } from "../components/SocialLoginButtons"
+import { SocialAuthButtons } from "../components/SocialAuthButtons"
 
 export const LoginPage = () => {
     const [email, setEmail] = useState("")
@@ -116,7 +116,7 @@ export const LoginPage = () => {
 
                 {/* Social Login Buttons */}
                 <div className="mt-6">
-                    <SocialLoginButtons mode="login" />
+                    <SocialAuthButtons mode="login" />
                 </div>
 
                 {/* Switch Mode Link */}
