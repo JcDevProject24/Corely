@@ -1,7 +1,39 @@
-node_modules
-.env
-.clauderules
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
 
-__pycache__
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python cache
 __pycache__/
-*.pyc
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude
+.clauderules
