@@ -1,16 +1,16 @@
-export const validateForm = (email: string, password: string, setErrors: (errors: {
-    email?: string
+export const validateForm = (username: string, password: string, setErrors: (errors: {
+    username?: string
     password?: string
 }) => void) => {
     const newErrors: {
-        email?: string
+        username?: string
         password?: string
     } = {}
 
-    if (!email) {
-        newErrors.email = "El correo electrónico es obligatorio"
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        newErrors.email = "Por favor ingresa un correo electrónico válido"
+    if (!username) {
+        newErrors.username = "El usuario es obligatorio"
+    } else if (username.length < 3) {
+        newErrors.username = "El usuario debe tener al menos 3 caracteres"
     }
 
     if (!password) {
@@ -18,7 +18,6 @@ export const validateForm = (email: string, password: string, setErrors: (errors
     } else if (password.length < 8) {
         newErrors.password = "La contraseña debe tener al menos 8 caracteres"
     }
-
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0

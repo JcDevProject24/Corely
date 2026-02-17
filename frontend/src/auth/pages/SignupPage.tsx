@@ -16,11 +16,13 @@ import { SocialAuthButtons } from "../components/SocialAuthButtons"
 export const SignupPage = () => {
 
     const [fullName, setFullName] = useState("")
+    const [username, setUsername] = useState("")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [errors, setErrors] = useState<{
         fullName?: string
+        username?: string
         email?: string
         password?: string
         confirmPassword?: string
@@ -34,11 +36,11 @@ export const SignupPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!validateForm(fullName, email, password, confirmPassword, setErrors)) return
+        if (!validateForm(fullName, username, email, password, confirmPassword, setErrors)) return
 
         setIsLoading(true)
         try {
-            const result = await signUpNewUser(email, password, fullName)
+            const result = await signUpNewUser(email, username, fullName, password)
 
             if (result.success) {
                 navigate("/")
@@ -49,6 +51,7 @@ export const SignupPage = () => {
 
             // Reset form on success
             setFullName("")
+            setUsername("")
             setEmail("")
             setPassword("")
             setConfirmPassword("")
@@ -86,6 +89,26 @@ export const SignupPage = () => {
                                 }`}
                         />
                         {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+                    </div>
+
+                    {/* Username Input */}
+                    <div className="space-y-2">
+                        <label htmlFor="username" className="text-sm font-medium text-gray-700">
+                            Usuario
+                        </label>
+                        <Input
+                            id="username"
+                            type="text"
+                            placeholder="juanperez"
+                            value={username}
+                            onChange={(e) => {
+                                setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))
+                                if (errors.username) setErrors((prev) => ({ ...prev, username: undefined }))
+                            }}
+                            className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors ${errors.username ? "border-red-500 focus:border-red-500" : "focus:border-blue-500 focus:ring-blue-500"
+                                }`}
+                        />
+                        {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
                     </div>
 
                     {/* Email Input */}

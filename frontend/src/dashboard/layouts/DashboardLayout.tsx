@@ -30,7 +30,7 @@ export const DashboardLayout = () => {
 
                     {/* Main content */}
                     <main className="flex-1 p-6 overflow-auto">
-                        <h2 className="text-2xl font-semibold mb-4">Bienvenido {user?.username}!</h2>
+                        <h2 className="text-2xl font-semibold mb-4">Bienvenido {user?.full_name}!</h2>
                         <Outlet />
                     </main>
                 </div>

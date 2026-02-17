@@ -12,9 +12,10 @@ import { userAuth } from "@/context/AuthContext"
 import { SocialAuthButtons } from "../components/SocialAuthButtons"
 
 export const LoginPage = () => {
-    const [email, setEmail] = useState("")
+    const lastUsername = localStorage.getItem("last_username") || ""
+    const [username, setUsername] = useState(lastUsername)
     const [password, setPassword] = useState("")
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+    const [errors, setErrors] = useState<{ username?: string; password?: string }>({})
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -24,11 +25,11 @@ export const LoginPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!validateForm(email, password, setErrors)) return
+        if (!validateForm(username, password, setErrors)) return
 
         setIsLoading(true)
         try {
-            const result = await lognInUser(email, password)
+            const result = await lognInUser(username, password)
 
             if (result.success) {
                 navigate("/")
@@ -38,7 +39,7 @@ export const LoginPage = () => {
             }
 
             // Reset form on success
-            setEmail("")
+            setUsername("")
             setPassword("")
         } catch {
             setError('Ocurrio un error')
@@ -56,24 +57,24 @@ export const LoginPage = () => {
 
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Email Input */}
+                    {/* Username Input */}
                     <div className="space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium text-gray-700">
-                            Correo electrónico
+                        <label htmlFor="username" className="text-sm font-medium text-gray-700">
+                            Usuario o email
                         </label>
                         <Input
-                            id="email"
-                            type="email"
-                            placeholder="tu@email.com"
-                            value={email}
+                            id="username"
+                            type="text"
+                            placeholder="usuario o email"
+                            value={username}
                             onChange={(e) => {
-                                setEmail(e.target.value)
-                                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+                                setUsername(e.target.value)
+                                if (errors.username) setErrors((prev) => ({ ...prev, username: undefined }))
                             }}
-                            className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors ${errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "focus:border-blue-500 focus:ring-blue-500"
+                            className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors ${errors.username ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "focus:border-blue-500 focus:ring-blue-500"
                                 }`}
                         />
-                        {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                        {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
                     </div>
 
                     {/* Password Input */}

@@ -22,6 +22,7 @@ type User = {
     id: number;
     email: string;
     username: string;
+    full_name: string;
     avatar_url: string | null;
     is_email_verified: boolean;
     has_password: boolean;
@@ -35,11 +36,12 @@ type AuthContextType = {
     loading: boolean;
     signUpNewUser: (
         email: string,
-        password: string,
-        username: string
+        username: string,
+        fullName: string,
+        password: string
     ) => Promise<{ success: boolean; data?: any; error?: any }>;
     lognInUser: (
-        email: string,
+        username: string,
         password: string
     ) => Promise<{ success: boolean; data?: any; error?: any }>;
     logOut: () => void;
@@ -97,8 +99,9 @@ export const AuthContextProvider = ({ children }: AuthProviderProps) => {
     // Sign Up
     const signUpNewUser = async (
         email: string,
-        password: string,
-        username: string
+        username: string,
+        fullName: string,
+        password: string
     ) => {
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
@@ -106,7 +109,7 @@ export const AuthContextProvider = ({ children }: AuthProviderProps) => {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password, username }),
+                body: JSON.stringify({ email, username, full_name: fullName, password }),
             });
 
             const data = await response.json();
@@ -119,7 +122,7 @@ export const AuthContextProvider = ({ children }: AuthProviderProps) => {
             }
 
             // Después de registrar, hacer login automáticamente
-            return await lognInUser(email, password);
+            return await lognInUser(username, password);
         } catch (error) {
             console.error("Error signing up:", error);
             return {
@@ -130,14 +133,14 @@ export const AuthContextProvider = ({ children }: AuthProviderProps) => {
     };
 
     // Log In
-    const lognInUser = async (email: string, password: string) => {
+    const lognInUser = async (username: string, password: string) => {
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username, password }),
             });
 
             const data = await response.json();
@@ -154,6 +157,9 @@ export const AuthContextProvider = ({ children }: AuthProviderProps) => {
 
             // Actualizar estado del usuario
             setUser(data.user);
+
+            // Guardar ultimo usuario para recordar en login
+            localStorage.setItem("last_username", username);
 
             console.log("Login success", data);
             return { success: true, data };

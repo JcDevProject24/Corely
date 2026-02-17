@@ -39,10 +39,19 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="El email ya está registrado",
         )
 
+    # Verificar si el username ya existe
+    existing_username = db.query(User).filter(User.username == user_data.username).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre de usuario ya está en uso",
+        )
+
     # Crear nuevo usuario con contraseña hasheada
     new_user = User(
         email=user_data.email,
         username=user_data.username,
+        full_name=user_data.full_name,
         hashed_password=hash_password(user_data.password),
     )
 
@@ -75,14 +84,16 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     Raises:
         HTTPException 401: Si las credenciales son inválidas
     """
-    # Buscar usuario por email
-    user = db.query(User).filter(User.email == credentials.email).first()
+    # Buscar usuario por username o email
+    user = db.query(User).filter(
+        (User.username == credentials.username) | (User.email == credentials.username)
+    ).first()
 
     # Verificar que el usuario existe y tiene password
     if not user or not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos",
+            detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -90,7 +101,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     if not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos",
+            detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -115,6 +126,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             id=user.id,
             email=user.email,
             username=user.username,
+            full_name=user.full_name,
             avatar_url=user.avatar_url,
             is_email_verified=user.is_email_verified,
             has_password=user.has_password,
@@ -149,6 +161,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         id=current_user.id,
         email=current_user.email,
         username=current_user.username,
+        full_name=current_user.full_name,
         avatar_url=current_user.avatar_url,
         is_email_verified=current_user.is_email_verified,
         has_password=current_user.has_password,

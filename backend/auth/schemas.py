@@ -7,12 +7,13 @@ from typing import Optional
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
+    full_name: str
     password: str
 
 
 # Schema para login
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str
     password: str
 
 
@@ -32,6 +33,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     username: str
+    full_name: str
     avatar_url: Optional[str] = None
     is_email_verified: bool = False
     has_password: bool = True

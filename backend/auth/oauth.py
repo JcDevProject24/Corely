@@ -95,9 +95,18 @@ async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db))
             db.add(social_account)
         else:
             # Crear nuevo usuario
+            # Generar username unico basado en el email
+            base_username = email.split("@")[0].lower().replace(".", "_")
+            username = base_username
+            counter = 1
+            while db.query(User).filter(User.username == username).first():
+                username = f"{base_username}{counter}"
+                counter += 1
+
             user = User(
                 email=email,
-                username=name,
+                username=username,
+                full_name=name,
                 avatar_url=picture,
                 is_email_verified=True,  # Google ya verifico el email
             )
@@ -137,6 +146,7 @@ async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db))
             id=user.id,
             email=user.email,
             username=user.username,
+            full_name=user.full_name,
             avatar_url=user.avatar_url,
             is_email_verified=user.is_email_verified,
             has_password=user.has_password,
