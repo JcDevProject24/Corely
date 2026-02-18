@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-# Instalamos las librerías directamente (o usa un requirements.txt si lo tienes)
+# Instalamos las librerías directamente desde el requirements.txt
 RUN pip install -r requirements.txt
 
 
