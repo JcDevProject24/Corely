@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -14,7 +14,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     full_name = Column(String(100), nullable=False)
     hashed_password = Column(String(255), nullable=True)  # Nullable para usuarios OAuth
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     is_email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
