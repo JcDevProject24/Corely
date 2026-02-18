@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { Eye, EyeOff } from "lucide-react"
 import { userAuth } from "@/context/AuthContext"
 import { validateForm } from "../utils/Signup"
 
@@ -29,6 +30,8 @@ export const SignupPage = () => {
     }>({})
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     const { signUpNewUser } = userAuth();
     const navigate = useNavigate();
@@ -136,18 +139,28 @@ export const SignupPage = () => {
                         <label htmlFor="password" className="text-sm font-medium text-gray-700">
                             Contraseña
                         </label>
-                        <Input
-                            id="password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value)
-                                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
-                            }}
-                            className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors ${errors.password ? "border-red-500 focus:border-red-500" : "focus:border-blue-500 focus:ring-blue-500"
-                                }`}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value)
+                                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+                                }}
+                                className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors pr-10 ${errors.password ? "border-red-500 focus:border-red-500" : "focus:border-blue-500 focus:ring-blue-500"
+                                    }`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                                tabIndex={-1}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                         {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                     </div>
 
@@ -156,18 +169,28 @@ export const SignupPage = () => {
                         <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
                             Confirmar contraseña
                         </label>
-                        <Input
-                            id="confirmPassword"
-                            type="password"
-                            placeholder="••••••••"
-                            value={confirmPassword}
-                            onChange={(e) => {
-                                setConfirmPassword(e.target.value)
-                                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-                            }}
-                            className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors ${errors.confirmPassword ? "border-red-500 focus:border-red-500" : "focus:border-blue-500 focus:ring-blue-500"
-                                }`}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="confirmPassword"
+                                type={showConfirmPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value)
+                                    if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+                                }}
+                                className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 transition-colors pr-10 ${errors.confirmPassword ? "border-red-500 focus:border-red-500" : "focus:border-blue-500 focus:ring-blue-500"
+                                    }`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                                tabIndex={-1}
+                            >
+                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                         {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
                     </div>
 
