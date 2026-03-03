@@ -12,8 +12,10 @@ import os
 from config import settings
 from models.user import Base, User
 from models.social_account import SocialAccount
+from models.task import Task  # noqa: F401 - necesario para que SQLAlchemy registre la tabla
 from auth.router import router as auth_router
 from auth.oauth import router as oauth_router
+from tasks.router import router as tasks_router
 
 # 1. URL de conexión para MariaDB/MySQL
 DATABASE_URL = settings.DATABASE_URL
@@ -22,11 +24,6 @@ DATABASE_URL = settings.DATABASE_URL
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-class Usuario(Base):
-    __tablename__ = "usuarios"
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100))  # En MariaDB conviene poner longitud al String
 
 
 # Crear tablas
@@ -43,7 +40,12 @@ def wait_for_db():
 
 # ------------------------------------------
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    wait_for_db()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # Configurar CORS
 app.add_middleware(
@@ -57,6 +59,7 @@ app.add_middleware(
 # Incluir routers de autenticación
 app.include_router(auth_router)
 app.include_router(oauth_router)
+app.include_router(tasks_router)
 
 
 def get_db():
@@ -67,28 +70,8 @@ def get_db():
         db.close()
 
 
-@app.on_event("startup")
-def startup_event():
-    wait_for_db()
-
-    db = SessionLocal()
-    try:
-        if db.query(Usuario).count() == 0:
-            db.add_all(
-                [
-                    Usuario(nombre="Pepe"),
-                    Usuario(nombre="Juan"),
-                    Usuario(nombre="Marta"),
-                ]
-            )
-            db.commit()
-    finally:
-        db.close()
 
 
-@app.get("/usuarios")
-def obtener_usuarios(db: Session = Depends(get_db)):
-    return db.query(Usuario).all()
 
 
 @app.get("/")
