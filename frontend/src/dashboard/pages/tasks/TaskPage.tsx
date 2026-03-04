@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Circle, Clock, AlertCircle, Trash2, X, ChevronDown } from "lucide-react";
+import { Plus, Circle, Clock, AlertCircle, Trash2, X, ChevronDown, Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const API_URL = "http://localhost:8000";
@@ -41,6 +41,14 @@ export const TaskPage = () => {
     const [newDueDate, setNewDueDate] = useState("");
     const [newDescription, setNewDescription] = useState("");
     const [creating, setCreating] = useState(false);
+
+    // Edit modal state
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+    const [editPriority, setEditPriority] = useState<"low" | "medium" | "high">("medium");
+    const [editDueDate, setEditDueDate] = useState("");
+    const [updating, setUpdating] = useState(false);
 
     // Display tasks = server tasks with pending changes applied
     const tasks: Task[] = serverTasks.map(t =>
@@ -162,6 +170,43 @@ export const TaskPage = () => {
         }
     };
 
+    // ── Open edit modal pre-filled ────────────────────────────────
+    const handleOpenEdit = (task: Task) => {
+        setEditingTask(task);
+        setEditName(task.name);
+        setEditDescription(task.description ?? "");
+        setEditPriority(task.priority);
+        setEditDueDate(new Date(task.due_date).toISOString().slice(0, 10));
+    };
+
+    // ── Save edited task (immediate) ──────────────────────────────
+    const handleSaveEdit = async () => {
+        if (!editingTask || !editName.trim() || !editDueDate) return;
+        setUpdating(true);
+        try {
+            const res = await fetch(`${API_URL}/tasks/${editingTask.id}`, {
+                method: "PUT",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    name: editName.trim(),
+                    description: editDescription.trim() || null,
+                    priority: editPriority,
+                    due_date: new Date(editDueDate).toISOString(),
+                }),
+            });
+            if (res.ok) {
+                const updated: Task = await res.json();
+                setServerTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+                setLocalChanges(prev => { const m = new Map(prev); m.delete(updated.id); return m; });
+                setEditingTask(null);
+            }
+        } catch (err) {
+            console.error("Error updating task:", err);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     // ── Helpers ────────────────────────────────────────────────────
     const isOverdue = (task: Task) =>
         task.status !== "completed" && new Date(task.due_date) < new Date();
@@ -236,6 +281,12 @@ export const TaskPage = () => {
                         </span>
                     </div>
                 </div>
+                <button
+                    onClick={() => handleOpenEdit(task)}
+                    className="text-muted-foreground hover:text-blue-500 transition-colors p-1 rounded shrink-0"
+                >
+                    <Pencil className="h-4 w-4" />
+                </button>
                 <button
                     onClick={() => handleDeleteTask(task.id)}
                     className="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded shrink-0"
@@ -360,6 +411,98 @@ export const TaskPage = () => {
                     >
                         {saving ? "Guardando..." : "Guardar cambios"}
                     </Button>
+                </div>
+            )}
+
+            {/* Edit Task Modal */}
+            {editingTask && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    onClick={() => setEditingTask(null)}
+                >
+                    <div
+                        className="bg-background rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold">Editar Tarea</h2>
+                            <button
+                                onClick={() => setEditingTask(null)}
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-name">Nombre <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="edit-name"
+                                value={editName}
+                                onChange={e => setEditName(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-desc">
+                                Descripción <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <textarea
+                                id="edit-desc"
+                                value={editDescription}
+                                onChange={e => setEditDescription(e.target.value)}
+                                rows={3}
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>Prioridad</Label>
+                            <div className="flex gap-2">
+                                {(["low", "medium", "high"] as const).map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setEditPriority(p)}
+                                        className={`flex-1 py-2 rounded-md text-sm font-medium border transition-colors ${
+                                            editPriority === p
+                                                ? p === "high"
+                                                    ? "bg-red-500 text-white border-red-500"
+                                                    : p === "medium"
+                                                        ? "bg-yellow-500 text-white border-yellow-500"
+                                                        : "bg-green-500 text-white border-green-500"
+                                                : "bg-card text-muted-foreground border-border hover:bg-muted"
+                                        }`}
+                                    >
+                                        {p === "low" ? "Baja" : p === "medium" ? "Media" : "Alta"}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-due">Fecha límite <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="edit-due"
+                                type="date"
+                                value={editDueDate}
+                                onChange={e => setEditDueDate(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex gap-3 pt-1">
+                            <Button variant="outline" className="flex-1" onClick={() => setEditingTask(null)}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                onClick={handleSaveEdit}
+                                disabled={!editName.trim() || !editDueDate || updating}
+                            >
+                                {updating ? "Guardando..." : "Guardar"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
