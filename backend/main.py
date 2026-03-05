@@ -12,10 +12,12 @@ import os
 from config import settings
 from models.user import Base, User
 from models.social_account import SocialAccount
-from models.task import Task  # noqa: F401 - necesario para que SQLAlchemy registre la tabla
+from models.task import Task    # noqa: F401 - necesario para que SQLAlchemy registre la tabla
+from models.habits import Habit  # noqa: F401 - necesario para que SQLAlchemy registre la tabla
 from auth.router import router as auth_router
 from auth.oauth import router as oauth_router
 from tasks.router import router as tasks_router
+from habits.router import router as habits_router
 
 # 1. URL de conexión para MariaDB/MySQL
 DATABASE_URL = settings.DATABASE_URL
@@ -60,6 +62,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(oauth_router)
 app.include_router(tasks_router)
+app.include_router(habits_router)
 
 
 def get_db():
