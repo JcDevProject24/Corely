@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Flame, CheckCircle2, Target, Pencil, Trash2, Loader2 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 
 interface Habit {
   id: number;
@@ -16,28 +15,48 @@ interface Habit {
 }
 
 const COLORS = [
-  { label: "Naranja", value: "orange", bg: "bg-orange-500", border: "border-l-orange-500" },
-  { label: "Verde",   value: "green",  bg: "bg-green-500",  border: "border-l-green-500"  },
-  { label: "Azul",    value: "blue",   bg: "bg-blue-500",   border: "border-l-blue-500"   },
-  { label: "Morado",  value: "purple", bg: "bg-purple-500", border: "border-l-purple-500" },
-  { label: "Rosa",    value: "pink",   bg: "bg-pink-500",   border: "border-l-pink-500"   },
-  { label: "Rojo",    value: "red",    bg: "bg-red-500",    border: "border-l-red-500"    },
+  { label: "Naranja", value: "orange", hex: "#f97316", bg: "bg-orange-500", border: "border-l-orange-500" },
+  { label: "Verde",   value: "green",  hex: "#22c55e", bg: "bg-green-500",  border: "border-l-green-500"  },
+  { label: "Azul",    value: "blue",   hex: "#3b82f6", bg: "bg-blue-500",   border: "border-l-blue-500"   },
+  { label: "Morado",  value: "purple", hex: "#a855f7", bg: "bg-purple-500", border: "border-l-purple-500" },
+  { label: "Rosa",    value: "pink",   hex: "#ec4899", bg: "bg-pink-500",   border: "border-l-pink-500"   },
+  { label: "Rojo",    value: "red",    hex: "#ef4444", bg: "bg-red-500",    border: "border-l-red-500"    },
 ];
 
-const getColorBorder = (color: string | null) => {
-  const found = COLORS.find((c) => c.value === color);
-  return found ? found.border : "border-l-muted";
+const DEFAULT_BLUE = "#3b82f6";
+
+const getColorEntry = (color: string | null) => COLORS.find((c) => c.value === color);
+const getColorBorder = (color: string | null) => getColorEntry(color)?.border ?? "border-l-muted";
+const getProgressColor = (color: string | null) => getColorEntry(color)?.hex ?? DEFAULT_BLUE;
+
+// ─── Fechas ──────────────────────────────────────────────────────────────────
+
+const toLocalDateString = (d: Date) => d.toISOString().split("T")[0];
+const getTodayString      = () => toLocalDateString(new Date());
+const getYesterdayString  = () => { const d = new Date(); d.setDate(d.getDate() - 1); return toLocalDateString(d); };
+const getTwoDaysAgoString = () => { const d = new Date(); d.setDate(d.getDate() - 2); return toLocalDateString(d); };
+
+const getTimeUntilMidnight = () => {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const diff = midnight.getTime() - now.getTime();
+  const h = Math.floor(diff / (1000 * 60 * 60));
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-const getColorBg = (color: string | null) => {
-  const found = COLORS.find((c) => c.value === color);
-  return found ? found.bg : "bg-muted";
-};
+const isCompletedToday = (last_completed_date: string | null) =>
+  last_completed_date === getTodayString();
 
-const getTodayString = () => new Date().toISOString().split("T")[0];
+type RiskStatus = "safe" | "grace_warning" | "grace_used" | "lost";
 
-const isCompletedToday = (last_completed_date: string | null) => {
-  return last_completed_date === getTodayString();
+const getHabitRisk = (habit: Habit): RiskStatus => {
+  if (isCompletedToday(habit.last_completed_date)) return "safe";
+  if (habit.streak === 0) return "safe"; // Sin racha que perder
+  if (habit.last_completed_date === getYesterdayString())  return "grace_warning"; // Debe completar hoy
+  if (habit.last_completed_date === getTwoDaysAgoString()) return "grace_used";    // Usando día de cortesía
+  return "lost";
 };
 
 const getProgress = (streak: number, goal: number) =>
@@ -54,6 +73,9 @@ export const HabitsPage = () => {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
+
+  // Racha global
+  const [globalStreak, setGlobalStreak] = useState(0);
 
   // Modal crear
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -76,15 +98,29 @@ export const HabitsPage = () => {
 
   // ─── API ────────────────────────────────────────────────────────────────────
 
+  const fetchStats = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/habits/stats", { headers: getAuthHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      setGlobalStreak(data.global_streak);
+    } catch {
+      console.error("Error al cargar estadísticas");
+    }
+  };
+
   const fetchHabits = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/habits", {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setHabits(data);
+      const [habitsRes, statsRes] = await Promise.all([
+        fetch("http://localhost:8000/habits",       { headers: getAuthHeaders() }),
+        fetch("http://localhost:8000/habits/stats", { headers: getAuthHeaders() }),
+      ]);
+      if (habitsRes.ok) setHabits(await habitsRes.json());
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        setGlobalStreak(stats.global_streak);
+      }
     } catch {
       console.error("Error al cargar hábitos");
     } finally {
@@ -99,11 +135,7 @@ export const HabitsPage = () => {
       const res = await fetch("http://localhost:8000/habits", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: createName.trim(),
-          goal: parseInt(createGoal),
-          color: createColor,
-        }),
+        body: JSON.stringify({ name: createName.trim(), goal: parseInt(createGoal), color: createColor }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -127,11 +159,7 @@ export const HabitsPage = () => {
       const res = await fetch(`http://localhost:8000/habits/${editingHabit.id}`, {
         method: "PUT",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: editName.trim(),
-          goal: parseInt(editGoal),
-          color: editColor,
-        }),
+        body: JSON.stringify({ name: editName.trim(), goal: parseInt(editGoal), color: editColor }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -176,6 +204,7 @@ export const HabitsPage = () => {
       if (!res.ok) throw new Error();
       const updated = await res.json();
       setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+      fetchStats(); // Actualizar racha global
     } catch {
       console.error("Error al marcar hábito");
     } finally {
@@ -190,12 +219,9 @@ export const HabitsPage = () => {
   // ─── Modales ────────────────────────────────────────────────────────────────
 
   const openCreateModal = () => {
-    setCreateName("");
-    setCreateGoal("30");
-    setCreateColor(null);
+    setCreateName(""); setCreateGoal("30"); setCreateColor(null);
     setShowCreateModal(true);
   };
-
   const closeCreateModal = () => setShowCreateModal(false);
 
   const openEditModal = (habit: Habit) => {
@@ -205,30 +231,21 @@ export const HabitsPage = () => {
     setEditColor(habit.color);
     setShowEditModal(true);
   };
+  const closeEditModal = () => { setShowEditModal(false); setEditingHabit(null); };
 
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setEditingHabit(null);
-  };
-
-  // ─── Lifecycle ──────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    fetchHabits();
-  }, []);
+  useEffect(() => { fetchHabits(); }, []);
 
   // ─── Stats ──────────────────────────────────────────────────────────────────
 
-  const totalStreak = habits.reduce((sum, h) => sum + h.streak, 0);
   const completedTodayCount = habits.filter((h) => isCompletedToday(h.last_completed_date)).length;
-  const completionRate =
-    habits.length > 0 ? Math.round((completedTodayCount / habits.length) * 100) : 0;
+  const completionRate = habits.length > 0 ? Math.round((completedTodayCount / habits.length) * 100) : 0;
+  const allCompletedToday = habits.length > 0 && completedTodayCount === habits.length;
 
   // ─── Filtro ─────────────────────────────────────────────────────────────────
 
   const filteredHabits = habits.filter((h) => {
     if (filter === "completed") return isCompletedToday(h.last_completed_date);
-    if (filter === "pending") return !isCompletedToday(h.last_completed_date);
+    if (filter === "pending")   return !isCompletedToday(h.last_completed_date);
     return true;
   });
 
@@ -242,7 +259,7 @@ export const HabitsPage = () => {
           <h2 className="text-3xl font-bold tracking-tight">Hábitos</h2>
           <p className="text-muted-foreground">Construye rutinas que transformen tu vida</p>
         </div>
-        <Button className="gap-2" onClick={openCreateModal}>
+        <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={openCreateModal}>
           <Plus className="h-4 w-4" />
           Nuevo Hábito
         </Button>
@@ -250,6 +267,7 @@ export const HabitsPage = () => {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
+        {/* Racha global */}
         <Card className="bg-linear-to-br from-orange-500/10 to-orange-600/10 border-orange-500/20">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -258,10 +276,19 @@ export const HabitsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{totalStreak} días</div>
-            <p className="text-xs text-muted-foreground">Suma de todas tus rachas</p>
+            <div className="text-2xl font-bold text-orange-600">{globalStreak} días</div>
+            {allCompletedToday ? (
+              <p className="text-xs text-green-600 font-medium">¡Racha activa hoy!</p>
+            ) : habits.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Te quedan {getTimeUntilMidnight()} para completar
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Días consecutivos al 100%</p>
+            )}
           </CardContent>
         </Card>
+
         <Card className="bg-linear-to-br from-green-500/10 to-green-600/10 border-green-500/20">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -276,6 +303,7 @@ export const HabitsPage = () => {
             <p className="text-xs text-muted-foreground">Tasa de {completionRate}%</p>
           </CardContent>
         </Card>
+
         <Card className="bg-linear-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -298,13 +326,13 @@ export const HabitsPage = () => {
               <CardTitle>Tus Hábitos Diarios</CardTitle>
               <CardDescription>Marca los hábitos que completes hoy</CardDescription>
             </div>
-            {/* Filtro */}
             <div className="flex gap-1">
               {(["all", "pending", "completed"] as FilterType[]).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
                   size="sm"
+                  className={filter === f ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
                   onClick={() => setFilter(f)}
                 >
                   {f === "all" ? "Todos" : f === "pending" ? "Pendientes" : "Completados"}
@@ -328,20 +356,43 @@ export const HabitsPage = () => {
           ) : (
             <div className="space-y-4">
               {filteredHabits.map((habit) => {
-                const completed = isCompletedToday(habit.last_completed_date);
-                const progress = getProgress(habit.streak, habit.goal);
-                const toggling = togglingIds.has(habit.id);
+                const completed   = isCompletedToday(habit.last_completed_date);
+                const progress    = getProgress(habit.streak, habit.goal);
+                const toggling    = togglingIds.has(habit.id);
+                const risk        = getHabitRisk(habit);
+                const goalReached = habit.streak >= habit.goal;
 
                 return (
                   <div
                     key={habit.id}
-                    className={`p-4 rounded-lg border border-l-4 ${getColorBorder(habit.color)} bg-card hover:bg-muted/50 transition-colors`}
+                    className={`p-4 rounded-lg border border-l-4 ${goalReached ? "border-l-yellow-500" : getColorBorder(habit.color)} bg-card hover:bg-muted/50 transition-colors`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <h3 className="font-semibold">{habit.name}</h3>
                           {completed && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                          {goalReached && (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                              🏆 ¡Meta alcanzada!
+                            </span>
+                          )}
+                          {/* Avisos de racha */}
+                          {risk === "grace_warning" && (
+                            <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full font-medium">
+                              ⚠ Completa hoy · {getTimeUntilMidnight()} restantes
+                            </span>
+                          )}
+                          {risk === "grace_used" && (
+                            <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
+                              🛡 Usando día de cortesía
+                            </span>
+                          )}
+                          {risk === "lost" && (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                              Racha interrumpida
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
@@ -356,10 +407,11 @@ export const HabitsPage = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
-                          variant={completed ? "secondary" : "default"}
                           size="sm"
                           disabled={toggling}
                           onClick={() => toggleHabit(habit.id)}
+                          variant={completed ? "secondary" : "default"}
+                          className={!completed ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
                         >
                           {toggling ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -369,24 +421,27 @@ export const HabitsPage = () => {
                             "Marcar"
                           )}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditModal(habit)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => openEditModal(habit)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
+
+                    {/* Barra de progreso con color del hábito */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>Progreso hacia la meta</span>
                         <span>{progress}%</span>
                       </div>
-                      <Progress
-                        value={progress}
-                        className={`h-2 [&>div]:${getColorBg(habit.color)}`}
-                      />
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: goalReached ? "#eab308" : getProgressColor(habit.color),
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -447,7 +502,11 @@ export const HabitsPage = () => {
               <Button variant="outline" onClick={closeCreateModal} disabled={createLoading}>
                 Cancelar
               </Button>
-              <Button onClick={createHabit} disabled={createLoading || !createName.trim()}>
+              <Button
+                onClick={createHabit}
+                disabled={createLoading || !createName.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crear"}
               </Button>
             </div>
@@ -508,7 +567,9 @@ export const HabitsPage = () => {
                 onClick={deleteHabit}
                 disabled={deleteLoading || editLoading}
               >
-                {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                {deleteLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
                   <><Trash2 className="h-4 w-4 mr-1" /> Eliminar</>
                 )}
               </Button>
@@ -516,7 +577,11 @@ export const HabitsPage = () => {
                 <Button variant="outline" onClick={closeEditModal} disabled={editLoading || deleteLoading}>
                   Cancelar
                 </Button>
-                <Button onClick={updateHabit} disabled={editLoading || deleteLoading || !editName.trim()}>
+                <Button
+                  onClick={updateHabit}
+                  disabled={editLoading || deleteLoading || !editName.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
                   {editLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
                 </Button>
               </div>
