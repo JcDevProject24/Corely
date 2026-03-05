@@ -48,7 +48,10 @@ export const TaskPage = () => {
     const [editDescription, setEditDescription] = useState("");
     const [editPriority, setEditPriority] = useState<"low" | "medium" | "high">("medium");
     const [editDueDate, setEditDueDate] = useState("");
+    const [editDueTime, setEditDueTime] = useState("");   // "" = sin hora límite
     const [updating, setUpdating] = useState(false);
+
+    const [newDueTime, setNewDueTime] = useState("");     // "" = sin hora límite
 
     // Display tasks = server tasks with pending changes applied
     const tasks: Task[] = serverTasks.map(t =>
@@ -130,7 +133,9 @@ export const TaskPage = () => {
                     name: newName.trim(),
                     priority: newPriority,
                     status: "pending",
-                    due_date: new Date(newDueDate).toISOString(),
+                    due_date: newDueTime
+                        ? new Date(`${newDueDate}T${newDueTime}:00`).toISOString()
+                        : new Date(newDueDate).toISOString(),
                     description: newDescription.trim() || null,
                 }),
             });
@@ -140,6 +145,7 @@ export const TaskPage = () => {
                 setIsModalOpen(false);
                 setNewName("");
                 setNewDueDate("");
+                setNewDueTime("");
                 setNewPriority("medium");
                 setNewDescription("");
             }
@@ -176,7 +182,10 @@ export const TaskPage = () => {
         setEditName(task.name);
         setEditDescription(task.description ?? "");
         setEditPriority(task.priority);
-        setEditDueDate(new Date(task.due_date).toISOString().slice(0, 10));
+        setEditDueDate(parseDueDate(task.due_date).toISOString().slice(0, 10));
+        const due = parseDueDate(task.due_date);
+        const dateOnly = due.getUTCHours() === 0 && due.getUTCMinutes() === 0;
+        setEditDueTime(dateOnly ? "" : `${String(due.getHours()).padStart(2,"0")}:${String(due.getMinutes()).padStart(2,"0")}`);
     };
 
     // ── Save edited task (immediate) ──────────────────────────────
@@ -191,7 +200,9 @@ export const TaskPage = () => {
                     name: editName.trim(),
                     description: editDescription.trim() || null,
                     priority: editPriority,
-                    due_date: new Date(editDueDate).toISOString(),
+                    due_date: editDueTime
+                        ? new Date(`${editDueDate}T${editDueTime}:00`).toISOString()
+                        : new Date(editDueDate).toISOString(),
                 }),
             });
             if (res.ok) {
@@ -208,13 +219,43 @@ export const TaskPage = () => {
     };
 
     // ── Helpers ────────────────────────────────────────────────────
-    const isOverdue = (task: Task) =>
-        task.status !== "completed" && new Date(task.due_date) < new Date();
+    // FastAPI devuelve UTC sin "Z" → JS lo trataría como hora local sin esta corrección
+    const parseDueDate = (dateStr: string) =>
+        new Date(dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z");
+
+    const toLocalDateStr = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+    // Tarea guardada sin hora = medianoche UTC (sentinel "solo fecha")
+    const isDateOnly = (task: Task) => {
+        const d = parseDueDate(task.due_date);
+        return d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+    };
+
+    // Rojo: fecha anterior a hoy, o tiene hora y ya pasó
+    const isOverdue = (task: Task) => {
+        if (task.status === "completed") return false;
+        const due = parseDueDate(task.due_date);
+        if (isDateOnly(task)) return toLocalDateStr(due) < toLocalDateStr(new Date());
+        return due < new Date();
+    };
+
+    // Amarillo: vence hoy (y la hora aún no ha pasado si tiene hora)
+    const isUrgent = (task: Task) => {
+        if (task.status === "completed") return false;
+        const due = parseDueDate(task.due_date);
+        const now = new Date();
+        if (isDateOnly(task)) return toLocalDateStr(due) === toLocalDateStr(now);
+        const sameDay = due.getDate() === now.getDate() &&
+            due.getMonth() === now.getMonth() &&
+            due.getFullYear() === now.getFullYear();
+        return sameDay && due >= now;
+    };
 
     const sortFn = (a: Task, b: Task) =>
         sortBy === "priority"
             ? (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
-            : new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+            : parseDueDate(a.due_date).getTime() - parseDueDate(b.due_date).getTime();
 
     const pendingTasks = tasks.filter(t => t.status !== "completed").sort(sortFn);
     const completedTasks = tasks.filter(t => t.status === "completed").sort(sortFn);
@@ -229,7 +270,7 @@ export const TaskPage = () => {
 
     const today = new Date();
     const todayPending = pendingTasks.filter(t => {
-        const d = new Date(t.due_date);
+        const d = parseDueDate(t.due_date);
         return d.getFullYear() === today.getFullYear() &&
             d.getMonth() === today.getMonth() &&
             d.getDate() === today.getDate();
@@ -238,8 +279,10 @@ export const TaskPage = () => {
     // ── Task row component ─────────────────────────────────────────
     const TaskRow = ({ task }: { task: Task }) => {
         const overdue = isOverdue(task);
+        const urgent  = isUrgent(task);
         const completed = task.status === "completed";
         const isPending = localChanges.has(task.id);
+        const withTime  = !isDateOnly(task);
 
         return (
             <div className={`flex items-start gap-4 p-4 rounded-lg border transition-colors
@@ -247,7 +290,9 @@ export const TaskPage = () => {
                     ? "bg-muted/50 opacity-60"
                     : overdue
                         ? "border-red-500/50 bg-red-500/5 hover:bg-red-500/10"
-                        : "bg-card hover:bg-muted/50"
+                        : urgent
+                            ? "border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/10"
+                            : "bg-card hover:bg-muted/50"
                 }
                 ${isPending ? "ring-2 ring-blue-500/40" : ""}`}
             >
@@ -258,7 +303,7 @@ export const TaskPage = () => {
                 />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <p className={`font-medium ${completed ? "line-through text-muted-foreground" : overdue ? "text-red-600" : ""}`}>
+                        <p className={`font-medium ${completed ? "line-through text-muted-foreground" : overdue ? "text-red-600" : urgent ? "text-yellow-600" : ""}`}>
                             {task.name}
                         </p>
                         {isPending && (
@@ -275,9 +320,10 @@ export const TaskPage = () => {
                             {getPriorityIcon(task.priority)}
                             {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                         </span>
-                        <span className={`text-xs ${overdue ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
-                            {overdue ? "Vencida · " : ""}
-                            {new Date(task.due_date).toLocaleDateString("es-ES")}
+                        <span className={`text-xs font-medium ${overdue ? "text-red-500" : urgent ? "text-yellow-500" : "text-muted-foreground font-normal"}`}>
+                            {overdue ? "Vencida · " : urgent ? "Urgente · " : ""}
+                            {parseDueDate(task.due_date).toLocaleDateString("es-ES")}
+                            {withTime && ` · ${parseDueDate(task.due_date).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
                         </span>
                     </div>
                 </div>
@@ -488,6 +534,29 @@ export const TaskPage = () => {
                                 value={editDueDate}
                                 onChange={e => setEditDueDate(e.target.value)}
                             />
+                            {editDueTime === "" ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setEditDueTime("12:00")}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
+                                >
+                                    <Clock className="h-3.5 w-3.5" />
+                                    + Hora límite
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <input
+                                        type="time"
+                                        value={editDueTime}
+                                        onChange={e => setEditDueTime(e.target.value)}
+                                        className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button type="button" onClick={() => setEditDueTime("")} className="text-muted-foreground hover:text-foreground">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3 pt-1">
@@ -583,6 +652,29 @@ export const TaskPage = () => {
                                 value={newDueDate}
                                 onChange={e => setNewDueDate(e.target.value)}
                             />
+                            {newDueTime === "" ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setNewDueTime("12:00")}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
+                                >
+                                    <Clock className="h-3.5 w-3.5" />
+                                    + Hora límite
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <input
+                                        type="time"
+                                        value={newDueTime}
+                                        onChange={e => setNewDueTime(e.target.value)}
+                                        className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button type="button" onClick={() => setNewDueTime("")} className="text-muted-foreground hover:text-foreground">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3 pt-1">
